@@ -1,0 +1,32 @@
+[build-system]
+requires = [ "poetry-core>=1.0.4",]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "doraemon"
+version = "0.0.1"
+description = "Python doraemon dev tool box"
+authors = [ "Vincent Duan <vincent.duan95@outlook.com>",]
+maintainers = [ "Vincent Duan <vincent.duan95@outlook.com>",]
+repository = "https://github.com/Duan-JM/doraemon"
+classifiers = [ "Development Status :: 5 - Production/Stable", "Intended Audience :: Developers", "License :: OSI Approved :: Apache Software License", "Topic :: Software Development :: Libraries",]
+keywords = [ "tools"]
+include = [ "LICENSE", "README.md"]
+readme = "README.md"
+license = "Apache-2.0"
+
+[[tool.poetry.source]]
+name = "aliyun for china users"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+priority = "primary"
+
+[tool.poetry.dependencies]
+python = ">3.9,<3.11"
+structlog = "24.1.0"
+structlog_sentry = ">=2.0.3"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+addopts = [
+    "--import-mode=importlib",
+]
