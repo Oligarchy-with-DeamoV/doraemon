@@ -25,6 +25,8 @@ python = ">3.9,<3.11"
 structlog = "24.1.0"
 structlog_sentry = ">=2.0.3"
 openai = "^1.37"
+numbers_parser = ">=4.13.2"
+pandas = "==2.2.3"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
