@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "doraemon"
-version = "0.0.1"
+version = "0.0.2"
 description = "Python doraemon dev tool box"
 authors = [ "Vincent Duan <vincent.duan95@outlook.com>",]
 maintainers = [ "Vincent Duan <vincent.duan95@outlook.com>",]
@@ -27,6 +27,11 @@ structlog_sentry = ">=2.0.3"
 openai = "^1.37"
 numbers_parser = ">=4.13.2"
 pandas = "==2.2.3"
+dacite = "^1.8.1"
+aiohttp = ">0"
+asyncio = ">0"
+requests = ">0"
+psycopg2-binary = ">0"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
