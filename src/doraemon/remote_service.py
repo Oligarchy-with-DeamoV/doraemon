@@ -104,4 +104,4 @@ class BaseService:
             outputs=request_result,
         )
 
-        return request_result
+        return from_dict(self.output_proto, request_result)
