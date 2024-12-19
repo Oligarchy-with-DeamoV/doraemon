@@ -1,9 +1,8 @@
-from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Any, Dict, Optional, Literal
-import requests
+from typing import Any, Dict, Literal, Optional
 
 from dacite import from_dict
+import requests
+
 from doraemon.logger.slogger import create_logger
 
 logger = create_logger(__name__)
@@ -34,9 +33,10 @@ class BaseService:
 
     def __call__(
         self,
-        trace_id: str,
-        inputs: Dict[str, Any],
         timeout: float,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict]:
 
@@ -46,19 +46,24 @@ class BaseService:
         else:
             verify = False
 
-        if not self.check_proto(data=inputs, proto=self.input_proto):
+        if not self.check_proto(
+            data=params if params else json, proto=self.input_proto
+        ):
             logger.error(
                 "Transform input data to proto failed.",
                 proto=self.input_proto,
-                data=inputs,
-                trace_id=trace_id,
+                params=params,
+                json=json,
+                headers=headers,
                 name=self.name,
             )
             return None
 
         logger.info(
             "Request remote service.",
-            trace_id=trace_id,
+            json=json,
+            params=params,
+            headers=headers,
             service_url=self.service_url,
             service_method=self.service_method,
             name=self.name,
@@ -66,8 +71,10 @@ class BaseService:
 
         request_result = getattr(requests, self.service_method)(
             url=self.service_url,
-            params=inputs,
+            params=params,
+            json=json,
             verify=verify,
+            headers=headers,
             timeout=timeout,
         )
 
@@ -75,10 +82,11 @@ class BaseService:
             logger.error(
                 "Request remote service failed.",
                 status_code=request_result.status_code,
-                trace_id=trace_id,
+                headers=headers,
                 service_url=self.service_url,
                 service_method=self.service_method,
-                inputs=inputs,
+                params=params,
+                json=json,
                 name=self.name,
             )
             return None
@@ -90,16 +98,16 @@ class BaseService:
                 "Transform output data to proto failed.",
                 proto=self.output_proto,
                 data=request_result,
-                trace_id=trace_id,
+                headers=headers,
                 name=self.name,
             )
             return None
         logger.info(
             "Service requests success.",
-            trace_id=trace_id,
             service_url=self.service_url,
             service_method=self.service_method,
-            inputs=inputs,
+            params=params,
+            json=json,
             name=self.name,
             outputs=request_result,
         )
