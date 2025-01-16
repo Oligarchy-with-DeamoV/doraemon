@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "doraemon"
-version = "0.0.4-beta"
+version = "0.0.5-beta"
 description = "Python doraemon dev tool box"
 authors = [ "Vincent Duan <vincent.duan95@outlook.com>",]
 maintainers = [ "Vincent Duan <vincent.duan95@outlook.com>",]

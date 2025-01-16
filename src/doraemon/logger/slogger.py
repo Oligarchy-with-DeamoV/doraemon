@@ -9,13 +9,19 @@ from structlog.dev import ConsoleRenderer
 from structlog.typing import EventDict, WrappedLogger
 from structlog_sentry import SentryProcessor
 
-DEFAULT_LOG_LEVEL = "INFO"
-ENV_LOG_LEVEL = "LOG_LEVEL"
+from doraemon.logger.file_handler import get_file_handler
+
+DEFAULT_LOG_LEVEL_NAME = "INFO"
+DEFAULT_LOG_PATH = "./log"
 FORCE_JSON_LOGGING = os.environ.get("FORCE_JSON_LOGGING")
 
 
-def create_logger(module_name=""):
-    configure_structlog()
+def create_logger(
+    module_name: str = "",
+    log_level: int = logging.getLevelName(DEFAULT_LOG_LEVEL_NAME),
+    log_file_path: str = DEFAULT_LOG_PATH,
+):
+    configure_structlog(log_level=log_level, log_file_path=log_file_path)
     return structlog.get_logger(module_name) if module_name else structlog.get_logger()
 
 
@@ -34,13 +40,15 @@ class HumanConsoleRenderer(ConsoleRenderer):
 
 def configure_structlog(
     log_level: Optional[int] = None,
+    log_file_path: str = DEFAULT_LOG_PATH,
 ) -> None:
     """Configure logging of the server."""
-    if log_level is None:  # Log level NOTSET is 0 so we use `is None` here
-        log_level_name = os.environ.get(ENV_LOG_LEVEL, DEFAULT_LOG_LEVEL)
-        # Change log level from str to int (note that log_level in function parameter
-        # int already, coming from CLI argparse parameter).
-        log_level = logging.getLevelName(log_level_name)
+    # check if log_file_path folder exist, if not create
+    if not os.path.exists(log_file_path):  # 检查文件夹是否存在
+        os.makedirs(log_file_path)
+
+    if log_level is None:
+        log_level = logging.getLevelName(DEFAULT_LOG_LEVEL_NAME)
 
     logging.basicConfig(
         format="%(message)s",
@@ -48,6 +56,15 @@ def configure_structlog(
         level=log_level,
     )
 
+    # ===> Config handlers
+    handlers = [
+        get_file_handler(logging.DEBUG, os.path.join(log_file_path, "local.log")),
+    ]
+    logger = logging.getLogger()
+    for handler in handlers:
+        logger.addHandler(handler)
+
+    # ===> Config processors
     shared_processors = [
         # Processors that have nothing to do with output,
         # e.g., add timestamps or log level names.
