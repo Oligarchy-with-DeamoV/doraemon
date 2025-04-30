@@ -3,9 +3,9 @@ from typing import Any, Dict, Literal, Optional
 from dacite import from_dict
 import requests
 
-from doraemon.logger.slogger import create_logger
+import structlog
 
-logger = create_logger(__name__)
+logger = structlog.getLogger(__name__)
 
 
 class BaseService:
@@ -36,9 +36,10 @@ class BaseService:
         timeout: float,
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict]:
+    ) -> Optional[Any]:
 
         # get verify settings
         if metadata and metadata.get("verify"):
@@ -46,9 +47,8 @@ class BaseService:
         else:
             verify = False
 
-        if not self.check_proto(
-            data=params if params else json, proto=self.input_proto
-        ):
+        _check_data = [x for x in [data, json, params] if x is not None][0]
+        if not self.check_proto(data=_check_data, proto=self.input_proto):
             logger.error(
                 "Transform input data to proto failed.",
                 proto=self.input_proto,
@@ -72,6 +72,7 @@ class BaseService:
         request_result = getattr(requests, self.service_method)(
             url=self.service_url,
             params=params,
+            data=data,
             json=json,
             verify=verify,
             headers=headers,

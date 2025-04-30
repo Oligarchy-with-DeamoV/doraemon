@@ -1,10 +1,11 @@
 import os
-from doraemon.logger.slogger import create_logger, configure_structlog
+from doraemon.logger.slogger import configure_structlog
+import structlog
 
 os.environ["FORCE_JSON_LOGGING"] = "INFO"
 
 configure_structlog()
-logger = create_logger(__name__)
+logger = structlog.getLogger(__name__)
 
 logger.info("hi")
 logger.debug("fuck")

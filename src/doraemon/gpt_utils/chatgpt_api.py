@@ -4,7 +4,7 @@ from typing import Dict, List
 from openai import AzureOpenAI, OpenAI
 
 
-def request_openai(messages: List[Dict]):
+def request_openai(messages: List[Dict], params: Dict = {}):
     TEMPERATURE = os.getenv("GPT_TEMPERATURE")
     OPENAI_API_BASE = os.getenv("OPENAI_API_BASE")
     OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
@@ -38,6 +38,7 @@ def request_openai(messages: List[Dict]):
                 model=OPENAI_API_MODEL_NAME,  # pyright: ignore
                 messages=messages,  # pyright: ignore
                 temperature=float(TEMPERATURE) if TEMPERATURE is not None else 0.9,
+                **params,
             )
 
         elif OPENAI_API_TYPE == "local":
@@ -51,6 +52,7 @@ def request_openai(messages: List[Dict]):
                 model=OPENAI_API_MODEL_NAME,  # pyright: ignore
                 messages=messages,  # pyright: ignore
                 temperature=float(TEMPERATURE) if TEMPERATURE is not None else 0.9,
+                **params,
             )
         else:
             raise ValueError(f"{OPENAI_API_TYPE} is not local or azure")
@@ -63,3 +65,5 @@ def request_openai(messages: List[Dict]):
 if __name__ == "__main__":
     mmessages = [{"role": "user", "content": "你好"}]
     print(request_openai(mmessages))
+    mmessages = [{"role": "user", "content": "讲100个子的故事"}]
+    print(request_openai(mmessages, params={"max_tokens": 10}))

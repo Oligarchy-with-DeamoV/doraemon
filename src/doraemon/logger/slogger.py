@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Optional
+from typing import List, Optional
 
 import structlog
 from structlog.dev import ConsoleRenderer
@@ -14,15 +14,6 @@ from doraemon.logger.file_handler import get_file_handler
 DEFAULT_LOG_LEVEL_NAME = "INFO"
 DEFAULT_LOG_PATH = "./log"
 FORCE_JSON_LOGGING = os.environ.get("FORCE_JSON_LOGGING")
-
-
-def create_logger(
-    module_name: str = "",
-    log_level: int = logging.getLevelName(DEFAULT_LOG_LEVEL_NAME),
-    log_file_path: str = DEFAULT_LOG_PATH,
-):
-    configure_structlog(log_level=log_level, log_file_path=log_file_path)
-    return structlog.get_logger(module_name) if module_name else structlog.get_logger()
 
 
 class HumanConsoleRenderer(ConsoleRenderer):
@@ -41,6 +32,7 @@ class HumanConsoleRenderer(ConsoleRenderer):
 def configure_structlog(
     log_level: Optional[int] = None,
     log_file_path: str = DEFAULT_LOG_PATH,
+    key_balcklist: Optional[List] = [],
 ) -> None:
     """Configure logging of the server."""
     # check if log_file_path folder exist, if not create
