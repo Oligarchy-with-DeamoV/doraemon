@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import logging
 import os
 import sys
-from typing import List, Optional
+from copy import deepcopy
+from typing import Dict, List, Optional
 
 import structlog
 from structlog.dev import ConsoleRenderer
@@ -29,15 +31,49 @@ class HumanConsoleRenderer(ConsoleRenderer):
         return super().__call__(logger, name, event_dict)
 
 
+def recursive_replace(d, target_key, new_value):
+    """
+    Recursively search for a target key in a dictionary and replace its value.
+
+    :param d: The dictionary to search in.
+    :param target_key: The key to search for.
+    :param new_value: The new value to replace the target key with.
+    :return: The modified dictionary.
+    """
+    for key, value in d.items():
+        if key == target_key:
+            d[key] = new_value
+        elif isinstance(value, dict):
+            recursive_replace(value, target_key, new_value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    recursive_replace(item, target_key, new_value)
+    return d
+
+
+class LongTextSlienceProcessor:
+    """LongTextSlienceProcessor"""
+
+    def __init__(self, target_key_value_mapper_list: List[Dict]):
+        self.target_key_value_mapper_list = target_key_value_mapper_list
+
+    def __call__(self, logger, method_name, event_dict):
+        for item in self.target_key_value_mapper_list:
+            event_dict = recursive_replace(
+                deepcopy(event_dict),
+                target_key=item["key"],
+                new_value=item["new_value"],
+            )
+        return event_dict
+
+
 def configure_structlog(
     log_level: Optional[int] = None,
-    log_file_path: str = DEFAULT_LOG_PATH,
-    key_balcklist: Optional[List] = [],
+    log_file_path: Optional[str] = None,
+    key_blacklist: List[Dict] = [],
 ) -> None:
     """Configure logging of the server."""
-    # check if log_file_path folder exist, if not create
-    if not os.path.exists(log_file_path):  # 检查文件夹是否存在
-        os.makedirs(log_file_path)
 
     if log_level is None:
         log_level = logging.getLevelName(DEFAULT_LOG_LEVEL_NAME)
@@ -49,9 +85,16 @@ def configure_structlog(
     )
 
     # ===> Config handlers
-    handlers = [
-        get_file_handler(logging.DEBUG, os.path.join(log_file_path, "local.log")),
-    ]
+    handlers = []
+    if log_file_path:
+        # check if log_file_path folder exist, if not create
+        if not os.path.exists(log_file_path):  # 检查文件夹是否存在
+            os.makedirs(log_file_path)
+
+        handlers.append(
+            get_file_handler(logging.DEBUG, os.path.join(log_file_path, "local.log"))
+        )
+
     logger = logging.getLogger()
     for handler in handlers:
         logger.addHandler(handler)
@@ -77,6 +120,10 @@ def configure_structlog(
         # as events as we are tracking exceptions anyways
         SentryProcessor(event_level=logging.FATAL),
     ]
+    if key_blacklist:
+        shared_processors = [
+            LongTextSlienceProcessor(target_key_value_mapper_list=key_blacklist)
+        ] + shared_processors
 
     if not FORCE_JSON_LOGGING and sys.stderr.isatty():
         # Pretty printing when we run in a terminal session.
