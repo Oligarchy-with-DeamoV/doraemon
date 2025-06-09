@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "doraemon"
-version = "0.0.6-beta"
+version = "0.1.0"
 description = "Python doraemon dev tool box"
 authors = [ "Vincent Duan <vincent.duan95@outlook.com>",]
 maintainers = [ "Vincent Duan <vincent.duan95@outlook.com>",]
@@ -32,6 +32,9 @@ aiohttp = "^3.10.10"
 asyncio = "^3.4.3"
 requests = "^2.32.3"
 psycopg2-binary = "^2.9.9"
+opentelemetry-api = "==1.33.1"
+opentelemetry-sdk = "==1.33.1"
+opentelemetry-semantic-conventions = "==0.54b1"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^4.0.0"

@@ -12,6 +12,7 @@ from structlog.typing import EventDict, WrappedLogger
 from structlog_sentry import SentryProcessor
 
 from doraemon.logger.file_handler import get_file_handler
+from doraemon.logger.telementory_handler import create_otel_log_handler
 
 DEFAULT_LOG_LEVEL_NAME = "INFO"
 DEFAULT_LOG_PATH = "./log"
@@ -72,6 +73,7 @@ def configure_structlog(
     log_level: Optional[int] = None,
     log_file_path: Optional[str] = None,
     key_blacklist: List[Dict] = [],
+    otel_config: Dict = {},
 ) -> None:
     """Configure logging of the server."""
 
@@ -94,6 +96,16 @@ def configure_structlog(
         handlers.append(
             get_file_handler(logging.DEBUG, os.path.join(log_file_path, "local.log"))
         )
+
+    if otel_config:
+        assert all(
+            key in otel_config.keys()
+            for key in ["service_name", "otel_collector_endpoint"]
+        ), f"otel_config should set service_name and otel_collector_endpoint. how ever we get {otel_config.keys()}"
+        otel_handler = create_otel_log_handler(
+            otel_config["service_name"], otel_config["otel_collector_endpoint"]
+        )
+        handlers.append(otel_handler)
 
     logger = logging.getLogger()
     for handler in handlers:
