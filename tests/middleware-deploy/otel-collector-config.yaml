@@ -1,0 +1,24 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+  kafka:
+    brokers: ["kafka:9092"]
+    topic: otel-logs
+    encoding: otlp_json
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [kafka]
+    traces:
+      receivers: [otlp]
+      exporters: [kafka]

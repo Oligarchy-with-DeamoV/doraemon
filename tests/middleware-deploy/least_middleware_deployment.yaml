@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: kafka-kraft
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      # KAFKA_KRAFT_CLUSTER_ID: ""
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_LOG_DIRS: /bitnami/kafka/data
+    volumes:
+      - kafka-data:/bitnami/kafka
+    networks:
+      - app-network
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    restart: on-failure
+    environment:
+      OTEL_LOG_LEVEL: debug
+    depends_on:
+      - kafka
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-config.yaml
+    command: ["--config=/etc/otel-config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - app-network
+
+  kafka-client:
+    image: confluentinc/cp-kafka:7.5.0
+    entrypoint: ["sh", "-c", "sleep infinity"]
+    depends_on:
+      - kafka
+    networks:
+      - app-network
+
+volumes:
+  kafka-data:
+
+networks:
+  app-network:
+    driver: bridge

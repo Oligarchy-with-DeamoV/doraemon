@@ -12,7 +12,7 @@ from structlog.typing import EventDict, WrappedLogger
 from structlog_sentry import SentryProcessor
 
 from doraemon.logger.file_handler import get_file_handler
-from doraemon.logger.telementory_handler import create_otel_log_handler
+from doraemon.logger.otel_handler import create_otel_log_handler
 
 DEFAULT_LOG_LEVEL_NAME = "INFO"
 DEFAULT_LOG_PATH = "./log"
