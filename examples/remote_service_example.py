@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
-from doraemon.remote_service import BaseService
 
+from doraemon.services import BaseService
 
 # curl -X POST "http://10.170.138.230:8096/question/filter/intent" -H "Content-Type: application/json" -H "traceId: 1234567890" -d '{
 #     "question": "tace 测试",
@@ -19,7 +19,6 @@ class InputProto:
 class GeneralRemoteResponseIntentInfo:
     intentQuestionId: int
     intentQuestion: str
-    intentQuestionVectorStr: str
     intentQuestionVector: List
     intentId: str
     intentName: str
@@ -34,7 +33,7 @@ class OutputProto:
 # 创建 BaseService 的实例
 service = BaseService(
     name="filter_intent_service",
-    service_url="http://10.170.138.230:8096/question/filter/intent",
+    service_url="http://10.170.138.185:8097/question/filter/intent",
     service_method="post",
     input_proto=InputProto,
     output_proto=OutputProto

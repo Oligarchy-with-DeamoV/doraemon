@@ -1,0 +1,35 @@
+# 服务配置文件
+services:
+  filter_intent_service:
+    service_url: "http://10.170.138.185:8097/question/filter/intent"
+    service_method: "post"
+    input_proto: "examples.remote_service_example.InputProto"
+    output_proto: "examples.remote_service_example.OutputProto"
+    timeout: 30.0
+    max_retries: 3
+    pool_connections: 10
+    pool_maxsize: 20
+    verify: true
+    headers:
+      Content-Type: "application/json"
+      User-Agent: "DoraemonClient/1.0"
+
+  another_service:
+    service_url: "http://example.com/api/v1/test"
+    service_method: "get"
+    input_proto: "examples.remote_service_example.InputProto"
+    output_proto: "examples.remote_service_example.OutputProto"
+    timeout: 15.0
+    max_retries: 2
+    pool_connections: 5
+    pool_maxsize: 10
+    verify: false
+    headers:
+      Authorization: "Bearer your-token-here"
+
+# 全局配置
+global:
+  default_timeout: 30.0
+  default_retries: 3
+  enable_monitoring: true
+  log_level: "INFO"

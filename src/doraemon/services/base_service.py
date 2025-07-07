@@ -1,14 +1,20 @@
+"""
+基础远程服务调用类
+这是原始的 BaseService，保持向后兼容
+"""
+
 from typing import Any, Dict, Literal, Optional
 
-from dacite import from_dict
 import requests
-
 import structlog
+from dacite import from_dict
 
 logger = structlog.getLogger(__name__)
 
 
 class BaseService:
+    """基础远程服务调用类"""
+    
     def __init__(
         self,
         name: str,
@@ -24,11 +30,12 @@ class BaseService:
         self.output_proto = output_proto
 
     def check_proto(self, data, proto) -> bool:
+        """检查数据是否符合 proto 定义"""
         try:
             from_dict(proto, data)
             return True
         except Exception as e:
-            logger.error("check proto failed.", execption=e)
+            logger.error("check proto failed.", exception=e)
             return False
 
     def __call__(
@@ -40,6 +47,7 @@ class BaseService:
         headers: Optional[Dict[str, str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[Any]:
+        """调用远程服务"""
 
         # get verify settings
         if metadata and metadata.get("verify"):
