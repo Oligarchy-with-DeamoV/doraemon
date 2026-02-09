@@ -16,6 +16,7 @@ def get_file_handler(
         backupCount=backup_count,
         encoding="utf-8",
     )
+    handler.suffix = "%Y-%m-%d"
     handler.setLevel(log_level)
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     return handler
