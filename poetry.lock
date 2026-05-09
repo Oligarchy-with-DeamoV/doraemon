@@ -340,28 +340,9 @@ description = "Validate configuration and produce human readable error messages.
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
-markers = "python_version < \"3.10\""
 files = [
     {file = "cfgv-3.4.0-py2.py3-none-any.whl", hash = "sha256:b7265b1f29fd3316bfcd2b330d63d024f2bfd8bcb8b0272f8e19a504856c48f9"},
     {file = "cfgv-3.4.0.tar.gz", hash = "sha256:e52591d4c5f5dead8e0f673fb16db7949d2cfb3f7da4582893288f0ded8fe560"},
-]
-
-[package.source]
-type = "legacy"
-url = "https://mirrors.aliyun.com/pypi/simple"
-reference = "aliyun for china users"
-
-[[package]]
-name = "cfgv"
-version = "3.5.0"
-description = "Validate configuration and produce human readable error messages."
-optional = false
-python-versions = ">=3.10"
-groups = ["dev"]
-markers = "python_version == \"3.10\""
-files = [
-    {file = "cfgv-3.5.0-py2.py3-none-any.whl", hash = "sha256:a8dc6b26ad22ff227d2634a65cb388215ce6cc96bbcc5cfde7641ae87e8dacc0"},
-    {file = "cfgv-3.5.0.tar.gz", hash = "sha256:d5b1034354820651caa73ede66a6294d6e95c1b00acc5e9b098e917404669132"},
 ]
 
 [package.source]
@@ -918,28 +899,9 @@ description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
-markers = "python_version < \"3.10\""
 files = [
     {file = "filelock-3.19.1-py3-none-any.whl", hash = "sha256:d38e30481def20772f5baf097c122c3babc4fcdb7e14e57049eb9d88c6dc017d"},
     {file = "filelock-3.19.1.tar.gz", hash = "sha256:66eda1888b0171c998b35be2bcc0f6d75c388a7ce20c3f3f37aa8e96c2dddf58"},
-]
-
-[package.source]
-type = "legacy"
-url = "https://mirrors.aliyun.com/pypi/simple"
-reference = "aliyun for china users"
-
-[[package]]
-name = "filelock"
-version = "3.29.0"
-description = "A platform independent file lock."
-optional = false
-python-versions = ">=3.10"
-groups = ["dev"]
-markers = "python_version == \"3.10\""
-files = [
-    {file = "filelock-3.29.0-py3-none-any.whl", hash = "sha256:96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"},
-    {file = "filelock-3.29.0.tar.gz", hash = "sha256:69974355e960702e789734cb4871f884ea6fe50bd8404051a3530bc07809cf90"},
 ]
 
 [package.source]
@@ -1227,31 +1189,9 @@ description = "File identification library for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
-markers = "python_version < \"3.10\""
 files = [
     {file = "identify-2.6.15-py2.py3-none-any.whl", hash = "sha256:1181ef7608e00704db228516541eb83a88a9f94433a8c80bb9b5bd54b1d81757"},
     {file = "identify-2.6.15.tar.gz", hash = "sha256:e4f4864b96c6557ef2a1e1c951771838f4edc9df3a72ec7118b338801b11c7bf"},
-]
-
-[package.extras]
-license = ["ukkonen"]
-
-[package.source]
-type = "legacy"
-url = "https://mirrors.aliyun.com/pypi/simple"
-reference = "aliyun for china users"
-
-[[package]]
-name = "identify"
-version = "2.6.19"
-description = "File identification library for Python"
-optional = false
-python-versions = ">=3.10"
-groups = ["dev"]
-markers = "python_version == \"3.10\""
-files = [
-    {file = "identify-2.6.19-py2.py3-none-any.whl", hash = "sha256:20e6a87f786f768c092a721ad107fc9df0eb89347be9396cadf3f4abbd1fb78a"},
-    {file = "identify-2.6.19.tar.gz", hash = "sha256:6be5020c38fcb07da56c53733538a3081ea5aa70d36a156f83044bfbf9173842"},
 ]
 
 [package.extras]
