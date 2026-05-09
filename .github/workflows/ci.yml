@@ -22,13 +22,16 @@ jobs:
       - name: Install Poetry
         run: pipx install poetry
 
-      - name: Configure Poetry to use the public PyPI
-        # The default `[[tool.poetry.source]]` in this repo points at the
-        # Aliyun mirror, which is fine for the maintainer but unreliable
-        # from GitHub-hosted runners. Drop it for CI.
-        run: |
-          poetry source remove "aliyun for china users" || true
-          poetry config virtualenvs.in-project true
+      - name: Configure Poetry
+        # NOTE: We intentionally do NOT run `poetry source remove` here.
+        # That command rewrites pyproject.toml in place, which invalidates
+        # the content-hash recorded in poetry.lock and causes
+        # `poetry install` to fail with "pyproject.toml changed
+        # significantly since poetry.lock was last generated".
+        # The Aliyun mirror declared in pyproject.toml is a public CDN
+        # reachable from GitHub-hosted runners, and poetry.lock pins exact
+        # versions, so installing through it is safe.
+        run: poetry config virtualenvs.in-project true
 
       - name: Restore Poetry cache
         uses: actions/cache@v4
