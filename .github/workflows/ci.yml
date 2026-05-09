@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Configure Poetry to use the public PyPI
+        # The default `[[tool.poetry.source]]` in this repo points at the
+        # Aliyun mirror, which is fine for the maintainer but unreliable
+        # from GitHub-hosted runners. Drop it for CI.
+        run: |
+          poetry source remove "aliyun for china users" || true
+          poetry config virtualenvs.in-project true
+
+      - name: Restore Poetry cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Restore pre-commit cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit hooks (lint + format + mypy + bandit)
+        run: poetry run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Tests with coverage (pytest)
+        run: poetry run pytest -q --cov=src --cov-report=term-missing

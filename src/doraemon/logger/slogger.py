@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 from copy import deepcopy
-from typing import Dict, List, Optional
 
 import structlog
 from structlog.dev import ConsoleRenderer
@@ -56,7 +55,7 @@ def recursive_replace(d, target_key, new_value):
 class LongTextSlienceProcessor:
     """LongTextSlienceProcessor"""
 
-    def __init__(self, target_key_value_mapper_list: List[Dict]):
+    def __init__(self, target_key_value_mapper_list: list[dict]):
         self.target_key_value_mapper_list = target_key_value_mapper_list
 
     def __call__(self, logger, method_name, event_dict):
@@ -70,15 +69,19 @@ class LongTextSlienceProcessor:
 
 
 def configure_structlog(
-    log_level: Optional[int] = None,
-    log_file_path: Optional[str] = None,
-    key_blacklist: List[Dict] = [],
-    otel_config: Dict = {},
+    log_level: int | None = None,
+    log_file_path: str | None = None,
+    key_blacklist: list[dict] | None = None,
+    otel_config: dict | None = None,
 ) -> None:
     """Configure logging of the server."""
 
     if log_level is None:
         log_level = logging.getLevelName(DEFAULT_LOG_LEVEL_NAME)
+    if key_blacklist is None:
+        key_blacklist = []
+    if otel_config is None:
+        otel_config = {}
 
     logging.basicConfig(
         format="%(message)s",
@@ -98,10 +101,14 @@ def configure_structlog(
         )
 
     if otel_config:
-        assert all(
+        if not all(
             key in otel_config.keys()
             for key in ["service_name", "otel_collector_endpoint"]
-        ), f"otel_config should set service_name and otel_collector_endpoint. how ever we get {otel_config.keys()}"
+        ):
+            raise ValueError(
+                "otel_config should set service_name and otel_collector_endpoint. "
+                f"however we got {list(otel_config.keys())}"
+            )
         otel_handler = create_otel_log_handler(
             otel_config["service_name"], otel_config["otel_collector_endpoint"]
         )

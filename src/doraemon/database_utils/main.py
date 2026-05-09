@@ -1,24 +1,38 @@
+"""Async batch vector ingestion script.
+
+Loads PostgreSQL/API config from environment variables and inserts
+question-embedding vectors into a pgvector-backed table.
+
+Configuration (all required when running as a script):
+
+- ``DORAEMON_DB_HOST`` / ``DORAEMON_DB_PORT`` / ``DORAEMON_DB_NAME``
+  / ``DORAEMON_DB_USER`` / ``DORAEMON_DB_PASSWORD``
+- ``DORAEMON_EMBEDDING_API_ENDPOINT``
+- ``DORAEMON_EMBEDDING_API_TOKEN``
+
+.. warning::
+
+   Earlier revisions of this file shipped a hardcoded PostgreSQL password
+   and an internal IP address. See ``SECURITY.md`` — anyone who cloned the
+   repository before this fix may still have the leaked credential and the
+   real password should be rotated externally.
+"""
+
+from __future__ import annotations
+
 import asyncio
+import os
+from dataclasses import dataclass
+from typing import Any
+
 import aiohttp
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import execute_values
 
-API_ENDPOINT = "http://10.170.138.230:9981/get_question_sentence_embedding"  # 替换为实际的 API 端点
-DATABASE_CONFIG = {
-    "dbname": "python_localtest_db",
-    "user": "postgres",
-    "password": "zgt#1024",
-    "host": "10.170.138.230",
-    "port": 5432,
-}
-TABLE_NAME = "documents"
 BATCH_SIZE = 100
 VECTOR_DIMENSION = 384
-REQUEST_HEADERS = {
-    "Authorization": "Bearer YOUR_API_TOKEN",
-    "Content-Type": "application/json",
-}
-CONCURRENT_REQUESTS = 10  # 根据 API 限制调整
+CONCURRENT_REQUESTS = 10
 
 
 KNOWLEDGE_QUESION_QUERY = """
@@ -70,22 +84,87 @@ create_table_list = [
 ]
 
 
-def create_table_if_not_exists(conn):
-    """
-    如果表不存在，则创建表。表结构包含一个文本列和一个 pgvector 列。
-    """
+@dataclass(frozen=True)
+class DBConfig:
+    """PostgreSQL connection settings, loaded from the environment."""
+
+    dbname: str
+    user: str
+    password: str
+    host: str
+    port: int = 5432
+
+    def as_kwargs(self) -> dict[str, Any]:
+        return {
+            "dbname": self.dbname,
+            "user": self.user,
+            "password": self.password,
+            "host": self.host,
+            "port": self.port,
+        }
+
+
+@dataclass(frozen=True)
+class APIConfig:
+    """Embedding-API connection settings, loaded from the environment."""
+
+    endpoint: str
+    token: str
+
+    def request_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            "See module docstring for the full list."
+        )
+    return value
+
+
+def load_db_config() -> DBConfig:
+    """Build a :class:`DBConfig` from environment variables."""
+    return DBConfig(
+        dbname=_require_env("DORAEMON_DB_NAME"),
+        user=_require_env("DORAEMON_DB_USER"),
+        password=_require_env("DORAEMON_DB_PASSWORD"),
+        host=_require_env("DORAEMON_DB_HOST"),
+        port=int(os.environ.get("DORAEMON_DB_PORT", "5432")),
+    )
+
+
+def load_api_config() -> APIConfig:
+    """Build an :class:`APIConfig` from environment variables."""
+    return APIConfig(
+        endpoint=_require_env("DORAEMON_EMBEDDING_API_ENDPOINT"),
+        token=_require_env("DORAEMON_EMBEDDING_API_TOKEN"),
+    )
+
+
+def create_table_if_not_exists(conn: Any) -> None:
+    """如果表不存在，则创建表。表结构包含一个文本列和一个 pgvector 列。"""
     with conn.cursor() as cur:
         for q in create_table_list:
             cur.execute(q)
     conn.commit()
-    print(f"检查并确保表已存在")
+    print("检查并确保表已存在")
 
 
-async def fetch_vector(session, text):
-    params = {"sender_id": "local_test", "text": "你好", "version": "v1"}
+async def fetch_vector(
+    session: aiohttp.ClientSession,
+    text: str,
+    api: APIConfig,
+) -> tuple[str, list[float]] | None:
+    params = {"sender_id": "local_test", "text": text, "version": "v1"}
     try:
         async with session.get(
-            API_ENDPOINT, params=params, headers=REQUEST_HEADERS
+            api.endpoint, params=params, headers=api.request_headers()
         ) as response:
             if response.status == 200:
                 data = await response.json()
@@ -103,57 +182,78 @@ async def fetch_vector(session, text):
         return None
 
 
-async def batch_fetch_vectors(texts):
+async def batch_fetch_vectors(
+    texts: list[str], api: APIConfig
+) -> list[tuple[str, list[float]]]:
     connector = aiohttp.TCPConnector(limit=CONCURRENT_REQUESTS)
     async with aiohttp.ClientSession(connector=connector) as session:
-        tasks = [fetch_vector(session, text) for text in texts]
+        tasks = [fetch_vector(session, text, api) for text in texts]
         results = await asyncio.gather(*tasks)
         return [result for result in results if result is not None]
 
 
-def insert_vectors(conn, table_name, columns, data):
+def insert_vectors(
+    conn: Any,
+    table_name: str,
+    columns: list[str],
+    data: list[tuple[Any, ...]],
+) -> None:
+    """Bulk-insert ``data`` into ``table_name``.
+
+    ``table_name`` and ``columns`` are quoted via :mod:`psycopg2.sql` to
+    prevent SQL injection — never interpolate identifiers with f-strings.
+    """
+    if not columns:
+        raise ValueError("`columns` must contain at least one column name")
+
     with conn.cursor() as cur:
-        sql = f"INSERT INTO {table_name} {columns} VALUES %s"
-        execute_values(cur, sql, data, template=None, page_size=BATCH_SIZE)
+        query = sql.SQL("INSERT INTO {table} ({columns}) VALUES %s").format(
+            table=sql.Identifier(table_name),
+            columns=sql.SQL(", ").join(sql.Identifier(c) for c in columns),
+        )
+        execute_values(cur, query, data, template=None, page_size=BATCH_SIZE)
     conn.commit()
 
 
-async def main_async(data_items):
-    # 连接到 PostgreSQL 数据库
+async def main_async(data_items: list[str]) -> None:
+    db_config = load_db_config()
+    api_config = load_api_config()
+
     try:
-        conn = psycopg2.connect(**DATABASE_CONFIG)
+        conn = psycopg2.connect(**db_config.as_kwargs())
     except psycopg2.Error as e:
         print(f"错误: 无法连接到数据库, 错误信息: {e}")
         return
 
     try:
-        # 检查并创建表（如果不存在）
         create_table_if_not_exists(conn)
 
         total = len(data_items)
         for i in range(0, total, BATCH_SIZE):
             batch_texts = data_items[i : i + BATCH_SIZE]
-            print(f"处理第 {i+1} 到 {i+len(batch_texts)} 条记录")
-            batch_vectors = await batch_fetch_vectors(batch_texts)
+            print(f"处理第 {i + 1} 到 {i + len(batch_texts)} 条记录")
+            batch_vectors = await batch_fetch_vectors(batch_texts, api_config)
             print(batch_vectors)
             if batch_vectors:
-                columns = ()
-                table_name = 'similar_question'
-                insert_vectors(conn, batch_vectors)
-        #         print(f"成功插入 {len(batch_vectors)} 条记录")
-        #     else:
-        #         print("本批次没有有效的向量数据插入")
+                # The legacy script lacks the additional NOT NULL columns
+                # required by `similar_question` (id / standard_question_id /
+                # timestamps / users). Refusing to silently insert partial
+                # rows. Callers should construct full row tuples and call
+                # `insert_vectors` directly.
+                raise NotImplementedError(
+                    "Schema-aware insertion is not implemented; "
+                    "construct full rows and call insert_vectors() directly."
+                )
     finally:
         conn.close()
         print("数据库连接已关闭")
 
 
-def main():
+def main() -> None:
     data_items = [
         "文本1",
         "文本2",
         "文本3",
-        # 添加更多文本
     ]
     asyncio.run(main_async(data_items))
 

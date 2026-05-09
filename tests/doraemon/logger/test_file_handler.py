@@ -44,7 +44,7 @@ def test_file_handler_creates_log_file():
         assert os.path.exists(log_file), "Log file should be created"
 
         # 验证日志文件内容
-        with open(log_file, "r", encoding="utf-8") as f:
+        with open(log_file, encoding="utf-8") as f:
             content = f.read()
             assert "Test log message" in content, "Log message should be in the file"
 
@@ -90,11 +90,11 @@ def test_file_handler_encoding():
         handler.flush()
 
         # 验证可以正确读取中文内容
-        with open(log_file, "r", encoding="utf-8") as f:
+        with open(log_file, encoding="utf-8") as f:
             content = f.read()
-            assert (
-                chinese_message in content
-            ), "Chinese characters should be correctly encoded"
+            assert chinese_message in content, (
+                "Chinese characters should be correctly encoded"
+            )
 
         handler.close()
 
@@ -120,7 +120,7 @@ def test_file_handler_log_level():
         handler.flush()
 
         # 读取日志文件内容
-        with open(log_file, "r", encoding="utf-8") as f:
+        with open(log_file, encoding="utf-8") as f:
             content = f.read()
             # 由于 handler 级别是 WARNING，只有 WARNING 和 ERROR 应该被记录
             assert "Debug message" not in content
@@ -128,5 +128,4 @@ def test_file_handler_log_level():
             assert "Warning message" in content
             assert "Error message" in content
 
-        handler.close()
         handler.close()

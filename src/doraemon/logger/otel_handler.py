@@ -12,6 +12,10 @@ def create_otel_log_handler(service_name: str, otel_collector_endpoint: str):
     logs.set_logger_provider(LoggerProvider(resource=resource))
     logger_provider = logs.get_logger_provider()
     otlp_log_exporter = OTLPLogExporter(endpoint=otel_collector_endpoint, insecure=True)
-    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    # The abstract `LoggerProvider` doesn't expose this method, but the
+    # SDK subclass returned by `get_logger_provider()` does at runtime.
+    logger_provider.add_log_record_processor(  # type: ignore[attr-defined]
+        BatchLogRecordProcessor(otlp_log_exporter)
+    )
     otel_handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
     return otel_handler

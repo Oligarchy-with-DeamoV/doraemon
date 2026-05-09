@@ -47,10 +47,10 @@ class InputProto:
     question: str
     count: int
 
-@dataclass  
+@dataclass
 class OutputProto:
     result: str
-    
+
 # 创建服务
 service = BaseService(
     name="my_service",
@@ -75,7 +75,7 @@ from doraemon.services import create_service
 # 创建增强服务
 service = create_service(
     name="enhanced_service",
-    service_url="http://api.example.com/endpoint", 
+    service_url="http://api.example.com/endpoint",
     service_method="post",
     input_proto=InputProto,
     output_proto=OutputProto,
@@ -104,27 +104,27 @@ async def main():
     service = create_async_service(
         name="async_service",
         service_url="http://api.example.com/endpoint",
-        service_method="post", 
+        service_method="post",
         input_proto=InputProto,
         output_proto=OutputProto
     )
-    
+
     # 单个异步调用
     result = await service(
         json_data={"question": "Hello", "count": 1}
     )
-    
+
     # 批量异步调用
     requests = [
         {"json_data": {"question": f"Question {i}", "count": 1}}
         for i in range(10)
     ]
-    
+
     results = await service.batch_call(
         requests=requests,
         max_concurrent=5
     )
-    
+
     await service.close()
 
 asyncio.run(main())
@@ -197,7 +197,7 @@ result = my_service(json_data={"question": "Hello"})
 from doraemon.services import global_monitor
 
 # 获取服务指标
-metrics = global_monitor.get_metrics("my_service") 
+metrics = global_monitor.get_metrics("my_service")
 print(f"成功率: {metrics['success_rate']}")
 print(f"平均响应时间: {metrics['avg_response_time']}")
 

@@ -65,7 +65,7 @@ def test_configure_structlog_with_file_logging(temp_log_dir, mock_terminal):
     assert os.path.exists(log_file), "Log file should be created"
 
     # 验证日志内容
-    with open(log_file, "r", encoding="utf-8") as f:
+    with open(log_file, encoding="utf-8") as f:
         content = f.read()
         assert test_message in content, "Log message should be in the file"
 
@@ -80,10 +80,6 @@ def test_log_file_handler_has_date_suffix(temp_log_dir):
 
     # 验证至少有一个 file handler 配置了日期后缀
     assert len(file_handlers) > 0, "Should have at least one file handler"
-    assert (
-        file_handlers[0].suffix == "%Y-%m-%d"
-    ), "File handler should have date suffix format"
-    assert len(file_handlers) > 0, "Should have at least one file handler"
-    assert (
-        file_handlers[0].suffix == "%Y-%m-%d"
-    ), "File handler should have date suffix format"
+    assert file_handlers[0].suffix == "%Y-%m-%d", (
+        "File handler should have date suffix format"
+    )

@@ -3,7 +3,7 @@
 这是原始的 BaseService，保持向后兼容
 """
 
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal, Optional
 
 import requests
 import structlog
@@ -14,7 +14,7 @@ logger = structlog.getLogger(__name__)
 
 class BaseService:
     """基础远程服务调用类"""
-    
+
     def __init__(
         self,
         name: str,
@@ -35,17 +35,17 @@ class BaseService:
             from_dict(proto, data)
             return True
         except Exception as e:
-            logger.error("check proto failed.", exception=e)
+            logger.error("check proto failed.", exception=str(e))
             return False
 
     def __call__(
         self,
         timeout: float,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> Optional[Any]:
         """调用远程服务"""
 

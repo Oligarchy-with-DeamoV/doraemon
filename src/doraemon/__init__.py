@@ -9,6 +9,10 @@ Doraemon - Python 开发工具箱
 - gpt_utils: GPT API 工具
 """
 
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
 from .file_utils import *
 from .logger import slogger
 from .services import BaseService, create_async_service, create_service
@@ -16,11 +20,16 @@ from .services import BaseService, create_async_service, create_service
 # 保持向后兼容
 from .services.base_service import BaseService as RemoteService
 
-__version__ = "0.1.0"
+try:
+    __version__ = version("doraemon")
+except PackageNotFoundError:  # pragma: no cover - editable install w/o metadata
+    __version__ = "0.0.0+unknown"
+
 __all__ = [
     "slogger",
-    "BaseService", 
+    "BaseService",
     "RemoteService",
     "create_service",
-    "create_async_service"
+    "create_async_service",
+    "__version__",
 ]

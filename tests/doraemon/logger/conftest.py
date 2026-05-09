@@ -1,7 +1,7 @@
-import os
-import pytest
 import tempfile
 from unittest import mock
+
+import pytest
 
 
 @pytest.fixture

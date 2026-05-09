@@ -1,11 +1,11 @@
 import os
-from typing import Any, Dict, List, Literal
+from typing import Any, Literal
 
-from numbers_parser import Document
 import pandas as pd
+from numbers_parser import Document
 
 
-def load_numbers(numbers_filepath: str) -> List[Dict[str, Any]]:
+def load_numbers(numbers_filepath: str) -> list[dict[str, Any]]:
     """
     加载 Numbers 文件并将其转换为 pd.DataFrame。
 
@@ -19,7 +19,7 @@ def load_numbers(numbers_filepath: str) -> List[Dict[str, Any]]:
     - "data": 表格内容的 pd.DataFrame。
     """
     doc = Document(numbers_filepath)
-    dataframe_lists = list()
+    dataframe_lists = []
     sheets = doc.sheets
     for sheet in sheets:
         tables = sheet.tables
@@ -40,7 +40,7 @@ def load_numbers(numbers_filepath: str) -> List[Dict[str, Any]]:
 
 def find_all_filepaths(
     source_folder: str, filetype: Literal["csv", "numbers", "xlsx"]
-) -> List[str]:
+) -> list[str]:
     """
     获取指定文件夹中所有特定类型的文件路径。
 

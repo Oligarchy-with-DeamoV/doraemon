@@ -1,6 +1,6 @@
 # Doraemon - Python 开发工具箱 🧰
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9%E2%80%933.10-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
@@ -70,7 +70,7 @@ class RequestData:
     query: str
     limit: int
 
-@dataclass  
+@dataclass
 class ResponseData:
     results: List[str]
     total: int
@@ -108,15 +108,15 @@ async def main():
     # 创建异步服务
     async_service = create_async_service(
         name="async_api",
-        service_url="https://api.example.com/data", 
+        service_url="https://api.example.com/data",
         service_method="get",
         input_proto=RequestData,
         output_proto=ResponseData
     )
-    
+
     # 单个异步调用
     result = await async_service(params={"id": 123})
-    
+
     # 批量并发调用
     requests = [
         {"params": {"id": i}} for i in range(1, 11)
@@ -125,7 +125,7 @@ async def main():
         requests=requests,
         max_concurrent=5
     )
-    
+
     await async_service.close()
 
 asyncio.run(main())
@@ -237,15 +237,16 @@ user_service = services["user_api"]
 
 ## 🔄 迁移指南
 
-如果你正在使用旧版本的 doraemon，请查看 [迁移指南](docs/SERVOCES_MIGRATION_GUIDE.md) 了解如何升级到新的 Services 模块。
+如果你正在使用旧版本的 doraemon，请查看 [迁移指南](docs/SERVICES_MIGRATION_GUIDE.md) 了解如何升级到新的 Services 模块。
 
 ### 向后兼容
 
-旧的导入方式仍然支持：
+旧的导入方式仍然支持，但会发出 `DeprecationWarning`：
 ```python
-# 这些导入方式仍然可用
+# 这些导入方式仍然可用（已废弃，将在未来版本移除）
 from doraemon.remote_service import BaseService
 from doraemon.remote_service_enhanced import create_service
+from doraemon.async_remote_service import create_async_service
 ```
 
 但建议使用新的导入方式：
@@ -258,14 +259,13 @@ from doraemon import create_service  # 更简洁
 ## 📋 示例文件
 
 - [`examples/services_module_example.py`](examples/services_module_example.py) - Services 模块完整示例
-- [`examples/enhanced_service_example.py`](examples/enhanced_service_example.py) - 增强功能示例
-- [`examples/async_service_example.py`](examples/async_service_example.py) - 异步功能示例
 - [`examples/remote_service_example.py`](examples/remote_service_example.py) - 基础服务示例
+- [`examples/services_config.yaml`](examples/services_config.yaml) - 配置文件示例
 
 ## 🛠️ 开发环境
 
 ### 要求
-- Python 3.8+
+- Python 3.9 – 3.10
 - Poetry (用于依赖管理)
 
 ### 可选依赖
@@ -294,7 +294,7 @@ poetry run pytest
 # 基础服务示例
 python examples/remote_service_example.py
 
-# 增强服务示例  
+# 增强服务示例
 python examples/enhanced_service_example.py
 
 # 异步服务示例

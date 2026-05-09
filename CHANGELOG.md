@@ -1,5 +1,68 @@
 # 更新日志
 
+## [Unreleased]
+
+### 🛡️ 安全修复 (Security)
+
+- **`database_utils/main.py`** 不再包含硬编码的 PostgreSQL 密码、内部 IP
+  和占位 API token；所有连接信息现在通过环境变量加载
+  (`DORAEMON_DB_*`, `DORAEMON_EMBEDDING_API_*`)。详见 `SECURITY.md` —
+  历史版本的密码 (`zgt#1024`) **必须** 在数据库侧轮换，仅删除源码无法
+  从 Git 历史中清除。
+- **修复 SQL 注入风险**: `insert_vectors()` 现在通过
+  `psycopg2.sql.Identifier` 安全引用表名和列名。
+- **MD5 缓存键** 在 `enhanced_service.py` 中显式标记为
+  `usedforsecurity=False`，满足 bandit `B324`。
+- **`assert` 移除**: `chatgpt_api.py` 与 `slogger.py` 中用作运行时校验
+  的 `assert` 替换为显式的 `RuntimeError` / `ValueError`，避免被
+  `python -O` 优化掉（bandit `B101`）。
+- 示例代码中的内部 IP 地址 (`10.170.138.*`) 全部替换为
+  `https://api.example.com` 占位符。
+
+### 📦 Packaging
+
+- 移除虚假依赖 `asyncio` (PyPI 上的 `asyncio` 包是 Python <3.4 的回填
+  版，会覆盖标准库)。
+- **PyYAML 升级 5.3.1 → ^6.0** （CVE-2020-14343 修复）。
+- 放宽其他严格 `==` 版本固定，改为兼容范围（`pandas ^2.2`,
+  `structlog ^24.1`, `opentelemetry-* >=1.33.1,<2`）。
+- `__version__` 通过 `importlib.metadata.version("doraemon")` 动态读取，
+  与 `pyproject.toml` 保持一致。
+
+### 🔧 API & 类型安全
+
+- `EnhancedService.__call__` 接受 `json=` 作为 `BaseService` 风格的兼容
+  别名（带 `DeprecationWarning`）；同时传入 `json=` 与 `json_data=`
+  会抛出 `TypeError`。
+- 新增弃用桥接模块（运行时打印 `DeprecationWarning`）：
+  - `doraemon.remote_service`
+  - `doraemon.remote_service_enhanced`
+  - `doraemon.async_remote_service`
+- 修复 `mypy src` 的 19 个错误（`AsyncConnectionManager._sessions`、
+  `ServiceRegistry._services`、`ResponseCache._cache`/`_timestamps`、
+  `chatgpt_api.py` 的 `Optional[str]` 流向 OpenAI SDK，等等）。
+
+### 🧪 测试 & 工程
+
+- 测试覆盖率从 33 % 提升到 76 %。
+- `tests/doraemon/services/` 下新增 35+ 个针对 `BaseService` /
+  `EnhancedService` （缓存、熔断器、错误路径）/ `AsyncService.batch_call`
+  / `ServiceConfigManager` / 弃用桥接模块的回归测试。
+- 新增 `responses` 与 `aioresponses` 作为开发依赖用于 HTTP mock。
+- `pytest-asyncio` 现在以 `asyncio_mode = "auto"` 启用。
+- 重复的断言被清理：`test_slogger.py`、`test_file_handler.py`。
+- 新增 `.github/workflows/ci.yml`：每次 push / PR 自动运行 ruff、
+  ruff format check、mypy、pytest --cov、bandit。
+
+### 📚 文档
+
+- `docs/SERVOCES_MIGRATION_GUIDE.md` 重命名为 `SERVICES_MIGRATION_GUIDE.md`。
+- `README.md` 删除指向不存在文件的链接（`enhanced_service_example.py`、
+  `async_service_example.py`），Python 版本徽章更新为 3.9 – 3.10。
+- 新增 `SECURITY.md` 与 `CONTRIBUTING.md`。
+
+---
+
 ## [0.2.0] - 2025-07-07
 
 ### 🎉 重大更新 - Services 模块重构
@@ -54,15 +117,12 @@ src/doraemon/
 
 #### 📖 新增文档
 
-- `docs/SERVOCES_MIGRATION_GUIDE.md` - 详细迁移指南
-- `OPTIMIZATION_SUGGESTIONS.md` - 性能优化建议
+- `docs/SERVICES_MIGRATION_GUIDE.md` - 详细迁移指南
 - 更新 `README.md` 包含完整使用示例
 
 #### 🌟 新增示例
 
 - `examples/services_module_example.py` - 完整模块使用示例
-- `examples/enhanced_service_example.py` - 增强功能示例
-- `examples/async_service_example.py` - 异步功能示例
 - `examples/services_config.yaml` - 配置文件示例
 
 #### 💫 使用示例
@@ -109,11 +169,11 @@ def query_data(query: str):
 #### 🔄 迁移步骤
 
 1. **立即可用**: 现有代码无需修改即可继续工作
-2. **更新导入**: 
+2. **更新导入**:
    ```python
    # 旧的
    from doraemon.remote_service import BaseService
-   # 新的  
+   # 新的
    from doraemon.services import BaseService
    ```
 3. **使用新功能**: 升级到增强服务获得企业级特性

@@ -41,19 +41,19 @@ from doraemon.async_remote_service import create_async_service
 from doraemon.services import (
     # 基础服务
     BaseService,
-    
+
     # 增强同步服务
     create_service,
     get_service,
     service_call,
     ServiceRegistry,
-    
+
     # 异步服务
     create_async_service,
     get_async_service,
     async_service_call,
     AsyncServiceRegistry,
-    
+
     # 配置管理
     ServiceConfigManager,
     global_monitor
@@ -119,13 +119,13 @@ async def main():
         input_proto=InputProto,
         output_proto=OutputProto
     )
-    
+
     # 单个调用
     result = await service(json_data=data)
-    
+
     # 批量调用
     batch_results = await service.batch_call(requests, max_concurrent=10)
-    
+
     await service.close()
 
 asyncio.run(main())
@@ -171,7 +171,7 @@ async def async_query_data(question: str):
    ```python
    # 旧的
    from doraemon.remote_service import BaseService
-   
+
    # 新的
    from doraemon.services import BaseService
    ```
@@ -188,7 +188,7 @@ async def async_query_data(question: str):
 ### 3. 示例文件
 
 - `examples/services_module_example.py` - 新模块使用示例
-- `examples/enhanced_service_example.py` - 增强功能示例  
+- `examples/enhanced_service_example.py` - 增强功能示例
 - `examples/async_service_example.py` - 异步功能示例
 
 ## 优势

@@ -1,7 +1,8 @@
 import time
+import warnings
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 import requests
 import structlog
@@ -15,6 +16,7 @@ logger = structlog.getLogger(__name__)
 @dataclass
 class ServiceConfig:
     """服务配置类"""
+
     name: str
     service_url: str
     service_method: Literal["post", "get", "put", "delete", "patch"]
@@ -25,14 +27,15 @@ class ServiceConfig:
     pool_connections: int = 10
     pool_maxsize: int = 20
     verify: bool = True
-    headers: Optional[Dict[str, str]] = None
+    headers: Optional[dict[str, str]] = None
 
 
 class ConnectionManager:
     """连接管理器 - 单例模式"""
+
     _instance = None
     _lock = Lock()
-    
+
     def __new__(cls):
         if cls._instance is None:
             with cls._lock:
@@ -41,52 +44,52 @@ class ConnectionManager:
                     cls._instance._sessions = {}
                     cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if not self._initialized:
             self._sessions = {}
             self._initialized = True
-    
+
     def get_session(self, service_name: str, config: ServiceConfig) -> requests.Session:
         """获取或创建会话"""
         if service_name not in self._sessions:
             session = requests.Session()
-            
+
             # 配置重试策略
             retry_strategy = Retry(
                 total=config.max_retries,
                 status_forcelist=[429, 500, 502, 503, 504],
                 backoff_factor=0.3,
                 raise_on_redirect=False,
-                raise_on_status=False
+                raise_on_status=False,
             )
-            
+
             # 配置HTTP适配器
             adapter = HTTPAdapter(
                 pool_connections=config.pool_connections,
                 pool_maxsize=config.pool_maxsize,
-                max_retries=retry_strategy
+                max_retries=retry_strategy,
             )
-            
+
             session.mount("http://", adapter)
             session.mount("https://", adapter)
-            
+
             # 设置默认headers
             if config.headers:
                 session.headers.update(config.headers)
-            
+
             self._sessions[service_name] = session
             logger.info(f"Created new session for service: {service_name}")
-        
+
         return self._sessions[service_name]
-    
+
     def close_session(self, service_name: str):
         """关闭指定服务的会话"""
         if service_name in self._sessions:
             self._sessions[service_name].close()
             del self._sessions[service_name]
             logger.info(f"Closed session for service: {service_name}")
-    
+
     def close_all_sessions(self):
         """关闭所有会话"""
         for service_name in list(self._sessions.keys()):
@@ -95,40 +98,44 @@ class ConnectionManager:
 
 class ServiceRegistry:
     """服务注册表"""
-    _services = {}
+
+    _services: dict[str, "EnhancedService"] = {}
     _lock = Lock()
-    
+
     @classmethod
-    def register(cls, config: ServiceConfig) -> 'EnhancedService':
+    def register(cls, config: ServiceConfig) -> "EnhancedService":
         """注册服务"""
         with cls._lock:
             if config.name in cls._services:
-                logger.warning(f"Service {config.name} already registered, updating configuration")
-            
+                logger.warning(
+                    f"Service {config.name} already registered, updating configuration"
+                )
+
             service = EnhancedService(config)
             cls._services[config.name] = service
             logger.info(f"Registered service: {config.name}")
             return service
-    
+
     @classmethod
-    def get_service(cls, name: str) -> Optional['EnhancedService']:
+    def get_service(cls, name: str) -> Optional["EnhancedService"]:
         """获取已注册的服务"""
         return cls._services.get(name)
-    
+
     @classmethod
-    def list_services(cls) -> Dict[str, 'EnhancedService']:
+    def list_services(cls) -> dict[str, "EnhancedService"]:
         """列出所有已注册的服务"""
         return cls._services.copy()
 
 
 class ResponseCache:
     """简单的响应缓存"""
+
     def __init__(self, ttl: int = 300):  # 默认5分钟TTL
-        self._cache = {}
-        self._timestamps = {}
+        self._cache: dict[str, Any] = {}
+        self._timestamps: dict[str, float] = {}
         self._ttl = ttl
         self._lock = Lock()
-    
+
     def get(self, key: str) -> Optional[Any]:
         """获取缓存"""
         with self._lock:
@@ -140,13 +147,13 @@ class ResponseCache:
                     del self._cache[key]
                     del self._timestamps[key]
         return None
-    
+
     def set(self, key: str, value: Any):
         """设置缓存"""
         with self._lock:
             self._cache[key] = value
             self._timestamps[key] = time.time()
-    
+
     def clear(self):
         """清空缓存"""
         with self._lock:
@@ -156,7 +163,7 @@ class ResponseCache:
 
 class EnhancedService:
     """增强的服务类"""
-    
+
     def __init__(self, config: ServiceConfig):
         self.config = config
         self.connection_manager = ConnectionManager()
@@ -165,62 +172,87 @@ class EnhancedService:
         self._circuit_breaker_last_failure = 0
         self._circuit_breaker_threshold = 5
         self._circuit_breaker_timeout = 60  # 秒
-    
+
     def _generate_cache_key(self, params=None, json_data=None, data=None) -> str:
         """生成缓存键"""
         import hashlib
+
         content = f"{self.config.service_url}:{params}:{json_data}:{data}"
-        return hashlib.md5(content.encode()).hexdigest()
-    
+        # 缓存键不用于安全场景；显式标记以满足 bandit B324 规则。
+        return hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
+
     def _is_circuit_breaker_open(self) -> bool:
         """检查熔断器是否开启"""
         if self._circuit_breaker_failures >= self._circuit_breaker_threshold:
-            if time.time() - self._circuit_breaker_last_failure < self._circuit_breaker_timeout:
+            if (
+                time.time() - self._circuit_breaker_last_failure
+                < self._circuit_breaker_timeout
+            ):
                 return True
             else:
                 # 重置熔断器
                 self._circuit_breaker_failures = 0
         return False
-    
+
     def _record_failure(self):
         """记录失败"""
         self._circuit_breaker_failures += 1
         self._circuit_breaker_last_failure = time.time()
-    
+
     def _record_success(self):
         """记录成功"""
         self._circuit_breaker_failures = 0
-    
+
     def check_proto(self, data, proto) -> bool:
         """验证数据格式"""
         try:
             from_dict(proto, data)
             return True
         except Exception as e:
-            logger.error("check proto failed.", exception=str(e), proto=str(proto), data=data)
+            logger.error(
+                "check proto failed.", exception=str(e), proto=str(proto), data=data
+            )
             return False
-    
+
     def __call__(
         self,
         timeout: Optional[float] = None,
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         use_cache: bool = False,
-        cache_ttl: int = 300
+        cache_ttl: int = 300,
+        json: Optional[dict[str, Any]] = None,
     ) -> Optional[Any]:
-        """调用远程服务"""
-        
+        """调用远程服务
+
+        参数 ``json`` 是为了兼容 :class:`BaseService` 的旧 API；新代码请使用
+        ``json_data``。同时传入两者会抛出 :class:`TypeError`。
+        """
+        # 兼容 BaseService 的 ``json=`` 参数
+        if json is not None:
+            if json_data is not None:
+                raise TypeError(
+                    "Pass either `json_data` (preferred) or the deprecated "
+                    "`json` alias, not both."
+                )
+            warnings.warn(
+                "The `json=` parameter is deprecated; use `json_data=` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            json_data = json
+
         # 检查熔断器
         if self._is_circuit_breaker_open():
             logger.error(f"Circuit breaker is open for service: {self.config.name}")
             return None
-        
+
         # 使用配置的默认超时时间
         timeout = timeout or self.config.timeout
-        
+
         # 检查缓存
         if use_cache:
             cache_key = self._generate_cache_key(params, json_data, data)
@@ -228,7 +260,7 @@ class EnhancedService:
             if cached_result is not None:
                 logger.info(f"Cache hit for service: {self.config.name}")
                 return cached_result
-        
+
         # 验证输入数据
         _check_data = next((x for x in [data, json_data, params] if x is not None), {})
         if not self.check_proto(data=_check_data, proto=self.config.input_proto):
@@ -241,20 +273,20 @@ class EnhancedService:
                 name=self.config.name,
             )
             return None
-        
+
         # 获取会话
         session = self.connection_manager.get_session(self.config.name, self.config)
-        
+
         # 合并headers
         request_headers = {}
         if headers:
             request_headers.update(headers)
-        
+
         # 获取verify设置
         verify = self.config.verify
         if metadata and "verify" in metadata:
             verify = metadata["verify"]
-        
+
         logger.info(
             "Request remote service.",
             json_data=json_data,
@@ -264,7 +296,7 @@ class EnhancedService:
             service_method=self.config.service_method,
             name=self.config.name,
         )
-        
+
         try:
             # 发送请求
             response = getattr(session, self.config.service_method)(
@@ -276,7 +308,7 @@ class EnhancedService:
                 headers=request_headers,
                 timeout=timeout,
             )
-            
+
             if response.status_code != 200:
                 self._record_failure()
                 logger.error(
@@ -290,7 +322,7 @@ class EnhancedService:
                     name=self.config.name,
                 )
                 return None
-            
+
             # 解析响应
             try:
                 result_data = response.json()
@@ -298,7 +330,7 @@ class EnhancedService:
                 self._record_failure()
                 logger.error(f"Failed to parse JSON response: {e}")
                 return None
-            
+
             # 验证输出数据
             if not self.check_proto(result_data, self.config.output_proto):
                 self._record_failure()
@@ -310,10 +342,10 @@ class EnhancedService:
                     name=self.config.name,
                 )
                 return None
-            
+
             # 记录成功
             self._record_success()
-            
+
             logger.info(
                 "Service requests success.",
                 service_url=self.config.service_url,
@@ -323,16 +355,16 @@ class EnhancedService:
                 name=self.config.name,
                 outputs=result_data,
             )
-            
+
             # 转换为目标对象
             result = from_dict(self.config.output_proto, result_data)
-            
+
             # 缓存结果
             if use_cache:
                 self.cache.set(cache_key, result)
-            
+
             return result
-            
+
         except requests.exceptions.RequestException as e:
             self._record_failure()
             logger.error(
@@ -342,19 +374,16 @@ class EnhancedService:
                 name=self.config.name,
             )
             return None
-    
+
     def health_check(self) -> bool:
         """健康检查"""
         try:
             session = self.connection_manager.get_session(self.config.name, self.config)
-            response = session.get(
-                url=f"{self.config.service_url}/health",
-                timeout=5
-            )
+            response = session.get(url=f"{self.config.service_url}/health", timeout=5)
             return response.status_code == 200
-        except:
+        except Exception:
             return False
-    
+
     def close(self):
         """关闭服务连接"""
         self.connection_manager.close_session(self.config.name)
@@ -367,7 +396,7 @@ def create_service(
     service_method: Literal["post", "get", "put", "delete", "patch"],
     input_proto: Any,
     output_proto: Any,
-    **kwargs
+    **kwargs,
 ) -> EnhancedService:
     """创建并注册服务"""
     config = ServiceConfig(
@@ -376,7 +405,7 @@ def create_service(
         service_method=service_method,
         input_proto=input_proto,
         output_proto=output_proto,
-        **kwargs
+        **kwargs,
     )
     return ServiceRegistry.register(config)
 
@@ -389,23 +418,26 @@ def get_service(name: str) -> Optional[EnhancedService]:
 # 装饰器支持
 def service_call(service_name: str, use_cache: bool = False, cache_ttl: int = 300):
     """服务调用装饰器"""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             service = get_service(service_name)
             if not service:
                 raise ValueError(f"Service {service_name} not found")
-            
+
             # 调用原函数获取服务调用参数
             func_result = func(*args, **kwargs)
-            
+
             # 如果原函数返回字典，用作服务调用参数
             if isinstance(func_result, dict):
                 call_kwargs = func_result.copy()
-                call_kwargs['use_cache'] = use_cache
-                call_kwargs['cache_ttl'] = cache_ttl
+                call_kwargs["use_cache"] = use_cache
+                call_kwargs["cache_ttl"] = cache_ttl
                 return service(**call_kwargs)
             else:
                 # 如果原函数返回其他内容，直接返回
                 return func_result
+
         return wrapper
+
     return decorator
